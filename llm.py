@@ -98,3 +98,80 @@ class SimpleTokenizerV1:
         
         # Return the cleaned, human-readable text.
         return text
+# 1. Create a sorted list of UNIQUE tokens extracted from the text
+# Using set() removes duplicates, sorted() ensures consistent ordering
+all_tokens = sorted(list(set(preprocessed)))
+
+# 2. Add special tokens used by LLMs
+# <|endoftext|> → marks the end of a message/document
+# <|unk|> → represents unknown/rare words not seen during training
+all_tokens.extend(["<|endoftext|>", "<|unk|>"])
+
+# 3. Build the vocabulary dictionary
+# Maps each token to a unique integer ID using enumerate()
+vocab = {token: integer for integer, token in enumerate(all_tokens)}
+new_len= len(vocab.items())
+print(new_len)
+
+for i, item in enumerate(list (vocab.items())[-5:]):
+    print(item)
+
+class SimpleTokenizerV2:
+    def __init__(self, vocab):
+        # vocab is a dictionary mapping: token → integer ID
+        self.str_to_int = vocab
+        # Reverse dictionary: integer ID → token
+        # This allows decoding (IDs back to text)
+        self.int_to_str = { i:s for s,i in vocab.items()}
+    
+    def encode(self, text):
+        # Split input text into words and punctuation using regex
+        # The regex separates punctuation marks, symbols, and whitespace
+        preprocessed = re.split(r'([,.:;?_!"()\']|--|\s)', text)
+
+        # Remove extra spaces and empty strings
+        preprocessed = [item.strip() for item in preprocessed if item.strip()]
+        
+        # Replace any token that is not in the vocabulary with <|unk|>
+        # This prevents KeyError when the model sees new/unknown words
+        preprocessed = [
+            item if item in self.str_to_int 
+            else "<|unk|>" for item in preprocessed
+        ]
+       
+        # Convert tokens to their corresponding integer IDs
+        ids = [self.str_to_int[s] for s in preprocessed]
+        
+        # Return encoded list of token IDs
+        return ids
+        
+    def decode(self, ids):
+        text = " ".join([self.int_to_str[i] for i in ids])
+        # Replace spaces before the specified punctuations
+        text = re.sub(r'\s+([,.:;?!"()\'])', r'\1', text)
+        return text
+
+tokenizer = SimpleTokenizerV2(vocab)
+text1 = "Hello, do you like tea?"
+text2 = "In the sunlit terraces of the palace"
+text = "<|endoftext|> ".join((text1, text2))
+
+print(text)
+
+sample = tokenizer.encode(text)
+print(sample)
+
+sample1 = tokenizer.decode(tokenizer.encode(text))
+print(sample1)
+
+"""tokenizer = SimpleTokenizerV1(vocab)
+
+text = It's the last he painted, you know,Mrs. Gisburn said with pardonable pride
+ids = tokenizer.encode(text)
+print(ids)
+
+decoded_text = tokenizer.decoder(ids)
+print(decoded_text)
+
+text = "balogun Ibrahim"
+print(tokenizer.encode(text))"""
